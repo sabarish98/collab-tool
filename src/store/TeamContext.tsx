@@ -53,7 +53,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const q = query(
       collection(db, 'team_members'),
-      where('userId', '==', user.uid)
+      where('userEmail', '==', user.email?.toLowerCase())
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -87,6 +87,30 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return unsubscribe;
+  }, [user]);
+
+  // Sync userId for memberships that only have email (invited users)
+  useEffect(() => {
+    if (!user || !user.email) return;
+
+    const syncUserIds = async () => {
+      const q = query(
+        collection(db, 'team_members'),
+        where('userEmail', '==', user.email?.toLowerCase()),
+        where('userId', '==', '')
+      );
+
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(d => {
+          batch.update(d.ref, { userId: user.uid });
+        });
+        await batch.commit();
+      }
+    };
+
+    syncUserIds();
   }, [user]);
 
   // Fetch members for current team

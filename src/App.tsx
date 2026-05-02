@@ -4,6 +4,7 @@ import { TeamProvider } from './store/TeamContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
+import LandingPage from './components/Landing/LandingPage';
 import TeamDashboard from './components/Team/TeamDashboard';
 import TeamView from './components/Team/TeamView';
 import BoardPage from './components/Board/BoardPage';
@@ -15,6 +16,7 @@ function App() {
       <BrowserRouter>
         <div className="app-container">
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
@@ -57,7 +59,7 @@ function App() {
             />
 
             {/* Default redirect */}
-            <Route path="*" element={<Navigate to="/teams" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </BrowserRouter>
