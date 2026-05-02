@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import {
+  collection, query, where, onSnapshot, orderBy, doc,
+  updateDoc, addDoc, writeBatch, deleteDoc
+} from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { Board, List, Card } from '../types';
 
@@ -14,6 +17,7 @@ interface BoardContextType {
   addList: (title: string) => Promise<void>;
   addCard: (listId: string, title: string) => Promise<void>;
   updateCard: (cardId: string, data: Partial<Card>) => Promise<void>;
+  deleteCard: (cardId: string) => Promise<void>;
 }
 
 const BoardContext = createContext<BoardContextType | null>(null);
@@ -24,25 +28,36 @@ export const useBoard = () => {
   return context;
 };
 
-export const BoardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface BoardProviderProps {
+  boardId: string;
+  children: React.ReactNode;
+}
+
+export const BoardProvider: React.FC<BoardProviderProps> = ({ boardId, children }) => {
   const { user } = useAuth();
   const [board, setBoard] = useState<Board | null>(null);
   const [lists, setLists] = useState<List[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Board
+  // Fetch Board by ID
   useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'boards'), where('ownerId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const boardData = snapshot.docs[0].data();
-        setBoard({ id: snapshot.docs[0].id, ...boardData } as Board);
+    if (!boardId) {
+      setLoading(false);
+      return;
+    }
+
+    const boardRef = doc(db, 'boards', boardId);
+    const unsubscribe = onSnapshot(boardRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setBoard({ id: snapshot.id, ...snapshot.data() } as Board);
+      } else {
+        setBoard(null);
       }
     });
+
     return unsubscribe;
-  }, [user]);
+  }, [boardId]);
 
   // Fetch Lists
   useEffect(() => {
@@ -62,12 +77,11 @@ export const BoardProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
     const listIds = lists.map(l => l.id);
-    // Firestore 'in' query supports max 10 elements. Assuming < 10 lists for V1.
-    if (listIds.length > 10) listIds.length = 10;
+    // Firestore 'in' query supports max 30 elements.
+    if (listIds.length > 30) listIds.length = 30;
     
     const q = query(collection(db, 'cards'), where('listId', 'in', listIds));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Sorting cards client-side based on a custom order or createdAt
       let fetchedCards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Card));
       fetchedCards.sort((a, b) => a.createdAt - b.createdAt);
       setCards(fetchedCards);
@@ -87,9 +101,11 @@ export const BoardProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const addCard = async (listId: string, title: string) => {
+    if (!user) return;
     await addDoc(collection(db, 'cards'), {
       title,
       listId,
+      createdBy: user.uid,
       createdAt: Date.now()
     });
   };
@@ -97,6 +113,11 @@ export const BoardProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateCard = async (cardId: string, data: Partial<Card>) => {
     const cardRef = doc(db, 'cards', cardId);
     await updateDoc(cardRef, data);
+  };
+
+  const deleteCard = async (cardId: string) => {
+    const cardRef = doc(db, 'cards', cardId);
+    await deleteDoc(cardRef);
   };
 
   const reorderLists = async (startIndex: number, endIndex: number) => {
@@ -116,9 +137,7 @@ export const BoardProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await batch.commit();
   };
 
-  const moveCard = async (cardId: string, sourceListId: string, destinationListId: string, newOrder?: number) => {
-    // For V1, we just update the listId and rely on createdAt for sorting within the list
-    // A robust system would update the order field for cards as well.
+  const moveCard = async (cardId: string, _sourceListId: string, destinationListId: string, _newOrder?: number) => {
     const cardRef = doc(db, 'cards', cardId);
     
     // Optimistic UI Update
@@ -130,7 +149,7 @@ export const BoardProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <BoardContext.Provider value={{ board, lists, cards, loading, addList, addCard, updateCard, reorderLists, moveCard }}>
+    <BoardContext.Provider value={{ board, lists, cards, loading, addList, addCard, updateCard, deleteCard, reorderLists, moveCard }}>
       {children}
     </BoardContext.Provider>
   );

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../../lib/firebase';
-import { LogIn } from 'lucide-react';
+import { LogIn, AlertCircle } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -18,9 +18,20 @@ const Login: React.FC = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/board');
+      navigate('/teams');
     } catch (err: any) {
-      setError(err.message || 'Failed to log in');
+      const msg = err.message || 'Failed to log in';
+      if (msg.includes('auth/invalid-credential')) {
+        setError('Invalid email or password. Please try again.');
+      } else if (msg.includes('auth/user-not-found')) {
+        setError('No account found with this email.');
+      } else if (msg.includes('auth/wrong-password')) {
+        setError('Incorrect password. Please try again.');
+      } else if (msg.includes('auth/too-many-requests')) {
+        setError('Too many failed login attempts. Please try again later.');
+      } else {
+        setError(msg.replace('Firebase: ', '').replace(/Error \([^)]+\)\.?/, '').trim());
+      }
     } finally {
       setLoading(false);
     }
@@ -29,8 +40,17 @@ const Login: React.FC = () => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2 className="auth-title">Log in to Trello Clone</h2>
-        {error && <div className="error-message">{error}</div>}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <img src="/logo.png" alt="CollabMaxx Logo" className="auth-logo" />
+        </div>
+        <h2 className="auth-title">Log in to CollabMaxx</h2>
+        <div className="tagline" style={{ textAlign: 'center', marginBottom: '1.5rem', marginTop: '-1rem' }}>never stop collaborating</div>
+        {error && (
+          <div className="error-message">
+            <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+            <span>{error}</span>
+          </div>
+        )}
         <form onSubmit={handleLogin} className="auth-form">
           <div className="form-group">
             <label className="form-label" htmlFor="email">Email address</label>
