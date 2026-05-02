@@ -21,7 +21,7 @@ interface BoardContextType {
   addComment: (cardId: string, content: string) => Promise<void>;
   getComments: (cardId: string) => Comment[];
   subscribeToComments: (cardId: string) => () => void;
-  activeComments: Comment[];
+  activeComments?: Comment[]; // Removed global state
 }
 
 const BoardContext = createContext<BoardContextType | null>(null);
@@ -43,7 +43,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ boardId, children 
   const [lists, setLists] = useState<List[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeComments, setActiveComments] = useState<Comment[]>([]);
+  // const [activeComments, setActiveComments] = useState<Comment[]>([]); // Removed
 
   // Fetch Board by ID
   useEffect(() => {
@@ -152,22 +152,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ boardId, children 
     await updateDoc(cardRef, { commentCount: increment(1), updatedAt: Date.now() });
   }, [user]);
 
-  const subscribeToComments = useCallback((cardId: string) => {
-    const q = query(
-      collection(db, 'comments'),
-      where('cardId', '==', cardId),
-      orderBy('createdAt', 'asc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const comments = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Comment));
-      setActiveComments(comments);
-    });
-    return unsubscribe;
-  }, []);
-
-  const getComments = useCallback((_cardId: string): Comment[] => {
-    return activeComments;
-  }, [activeComments]);
+  // Removed global getComments and subscribeToComments handlers
 
   const reorderLists = async (startIndex: number, endIndex: number) => {
     const result = Array.from(lists);
@@ -195,7 +180,7 @@ export const BoardProvider: React.FC<BoardProviderProps> = ({ boardId, children 
       board, lists, cards, loading,
       addList, addCard, updateCard, deleteCard,
       reorderLists, moveCard,
-      addComment, getComments, subscribeToComments, activeComments
+      addComment,
     }}>
       {children}
     </BoardContext.Provider>

@@ -46,7 +46,7 @@ const Login: React.FC = () => {
         <h2 className="auth-title">Log in to CollabMaxx</h2>
         <div className="tagline" style={{ textAlign: 'center', marginBottom: '1.5rem', marginTop: '-1rem' }}>never stop collaborating</div>
         {error && (
-          <div className="error-message">
+          <div className="error-message" role="alert" aria-live="polite">
             <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
             <span>{error}</span>
           </div>

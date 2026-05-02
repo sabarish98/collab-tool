@@ -53,6 +53,15 @@ const Card: React.FC<CardProps> = ({ card, index }) => {
               borderLeft: `3px solid ${priority?.color || '#8b949e'}`,
             }}
             onClick={() => setIsModalOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsModalOpen(true);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`Card: ${card.title}. Priority: ${priority?.label || 'None'}. Status: ${status?.label || 'Open'}. ${card.dueDate ? 'Due: ' + formatShortDate(card.dueDate) : ''}`}
           >
             {/* Labels */}
             {cardLabels.length > 0 && (

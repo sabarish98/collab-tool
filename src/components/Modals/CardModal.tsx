@@ -5,6 +5,9 @@ import {
   X, AlignLeft, CreditCard, Calendar, Users, Tag, MessageSquare,
   ChevronDown, Trash2, Send, Clock
 } from 'lucide-react';
+import { db } from '../../lib/firebase';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { Comment } from '../../types';
 
 interface CardModalProps {
   card: CardType;
@@ -35,7 +38,8 @@ const formatRelativeTime = (ts: number) => {
 };
 
 const CardModal: React.FC<CardModalProps> = ({ card, onClose }) => {
-  const { updateCard, deleteCard, lists, addComment, subscribeToComments, activeComments } = useBoard();
+  const { updateCard, deleteCard, lists, addComment } = useBoard();
+  const [comments, setComments] = useState<Comment[]>([]);
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description || '');
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -59,14 +63,22 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose }) => {
 
   // Subscribe to comments
   useEffect(() => {
-    const unsub = subscribeToComments(card.id);
-    return unsub;
-  }, [card.id, subscribeToComments]);
+    const q = query(
+      collection(db, 'comments'),
+      where('cardId', '==', card.id),
+      orderBy('createdAt', 'asc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedComments = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Comment));
+      setComments(fetchedComments);
+    });
+    return unsubscribe;
+  }, [card.id]);
 
   // Scroll to bottom on new comments
   useEffect(() => {
     commentEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeComments.length]);
+  }, [comments.length]);
 
   // Close on Escape
   useEffect(() => {
@@ -264,14 +276,14 @@ const CardModal: React.FC<CardModalProps> = ({ card, onClose }) => {
               <div className="modal-section-header">
                 <MessageSquare size={18} />
                 <h3>Activity</h3>
-                <span className="comment-count-badge">{activeComments.length}</span>
+                <span className="comment-count-badge">{comments.length}</span>
               </div>
 
               <div className="comment-list">
-                {activeComments.length === 0 && (
+                {comments.length === 0 && (
                   <p className="comment-empty">No comments yet. Start the conversation!</p>
                 )}
-                {activeComments.map(comment => (
+                {comments.map(comment => (
                   <div key={comment.id} className="comment-item">
                     <div className="comment-avatar">
                       {comment.authorEmail.charAt(0).toUpperCase()}

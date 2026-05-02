@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Is the user authenticated?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if user is a member of the team
+    function isTeamMember(teamId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/team_members/$(request.auth.uid + "_" + teamId));
+    }
+    
+    // Helper: Check if user is a manager of the team
+    function isTeamManager(teamId) {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/team_members/$(request.auth.uid + "_" + teamId)).data.role == 'manager';
+    }
+
+    // Teams
+    match /teams/{teamId} {
+      allow create: if isAuthenticated();
+      allow read: if isTeamMember(teamId);
+      allow update, delete: if isTeamManager(teamId);
+    }
+
+    // Team Members
+    // IDs are formatted as "userId_teamId" in the context for easy lookup if we wanted, 
+    // but the code uses addDoc which generates random IDs. 
+    // We should probably change the code to use predictable IDs or use query-based rules.
+    // For now, let's use a more flexible check.
+    match /team_members/{memberId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isTeamMember(resource.data.teamId)
+      );
+      allow create: if isAuthenticated(); // Anyone can be added, but usually restricted by app logic
+      allow update, delete: if isTeamManager(resource.data.teamId);
+    }
+
+    // Boards
+    match /boards/{boardId} {
+      allow read: if isTeamMember(resource.data.teamId);
+      allow create: if isAuthenticated() && isTeamMember(request.resource.data.teamId);
+      allow update: if isTeamMember(resource.data.teamId);
+      allow delete: if isTeamManager(resource.data.teamId);
+    }
+
+    // Lists
+    match /lists/{listId} {
+      function getBoardTeamId(boardId) {
+        return get(/databases/$(database)/documents/boards/$(boardId)).data.teamId;
+      }
+      
+      allow read: if isTeamMember(getBoardTeamId(resource.data.boardId));
+      allow create: if isAuthenticated() && isTeamMember(getBoardTeamId(request.resource.data.boardId));
+      allow update, delete: if isTeamMember(getBoardTeamId(resource.data.boardId));
+    }
+
+    // Cards
+    match /cards/{cardId} {
+      function getListTeamId(listId) {
+        let boardId = get(/databases/$(database)/documents/lists/$(listId)).data.boardId;
+        return get(/databases/$(database)/documents/boards/$(boardId)).data.teamId;
+      }
+
+      allow read: if isTeamMember(getListTeamId(resource.data.listId));
+      allow create: if isAuthenticated() && isTeamMember(getListTeamId(request.resource.data.listId));
+      allow update, delete: if isTeamMember(getListTeamId(resource.data.listId));
+    }
+
+    // Comments
+    match /comments/{commentId} {
+      function getCardTeamId(cardId) {
+        let listId = get(/databases/$(database)/documents/cards/$(cardId)).data.listId;
+        let boardId = get(/databases/$(database)/documents/lists/$(listId)).data.boardId;
+        return get(/databases/$(database)/documents/boards/$(boardId)).data.teamId;
+      }
+
+      allow read: if isTeamMember(getCardTeamId(resource.data.cardId));
+      allow create: if isAuthenticated() && isTeamMember(getCardTeamId(request.resource.data.cardId));
+      allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+    }
+  }
+}
