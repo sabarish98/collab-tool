@@ -85,7 +85,7 @@ const Register: React.FC = () => {
             <span>{error}</span>
           </div>
         )}
-        <form onSubmit={handleRegister} className="auth-form">
+        <form data-testid="register-form" aria-label="register-form" onSubmit={handleRegister} className="auth-form">
           <div className="form-group">
             <label className="form-label" htmlFor="email">Email address</label>
             <input

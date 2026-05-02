@@ -51,7 +51,7 @@ const Login: React.FC = () => {
             <span>{error}</span>
           </div>
         )}
-        <form onSubmit={handleLogin} className="auth-form">
+        <form data-testid="login-form" aria-label="login-form" onSubmit={handleLogin} className="auth-form">
           <div className="form-group">
             <label className="form-label" htmlFor="email">Email address</label>
             <input

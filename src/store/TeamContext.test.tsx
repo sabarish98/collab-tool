@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TeamProvider, useTeam } from './TeamContext';
 import { AuthProvider } from './AuthContext';
-import '../../test/firebase-mock';
+import '../test/setup'; // Corrected path
 
 const TestComponent = () => {
   const { teams, loading } = useTeam();
@@ -24,7 +24,7 @@ describe('TeamContext', () => {
       </AuthProvider>
     );
     
-    // Initially loading
+    // Check for loading state or content
     expect(screen.getByText(/Loading.../i)).toBeInTheDocument();
   });
 });
