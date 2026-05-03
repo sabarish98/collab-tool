@@ -1,6 +1,9 @@
 # CollabMaxx 🚀
-
 > **never stop collaborating**
+
+> [!NOTE]
+This is a sample project, extremely vibecoded to stress test [Google Antigravity](https://antigravity.google/) for [PromptWars](https://hack2skill.com/event/build-with-ai?tab=promptwars&utm_source=hack2skill&utm_medium=homepage) 
+
 
 CollabMaxx is a professional-grade, collaborative project management tool inspired by Trello and JIRA. Built for high-performance teams, it offers a seamless Kanban experience with real-time synchronization, advanced task tracking, and team-based access control.
 
@@ -124,5 +127,3 @@ The project uses Firestore Security Rules to ensure data integrity and privacy. 
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-
-Built with ❤️ by the CollabMaxx Team.
